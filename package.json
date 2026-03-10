@@ -1,0 +1,183 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "ecoflow",
+  "title": "EcoFlow",
+  "description": "Monitor and control your EcoFlow devices — battery levels, power input/output, and device controls",
+  "icon": "extension-icon.png",
+  "author": "olli0103",
+  "categories": ["Other"],
+  "license": "MIT",
+  "preferences": [
+    {
+      "name": "accessKey",
+      "title": "Access Key",
+      "description": "Your EcoFlow Developer API Access Key from developer.ecoflow.com",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "secretKey",
+      "title": "Secret Key",
+      "description": "Your EcoFlow Developer API Secret Key from developer.ecoflow.com",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "region",
+      "title": "Region",
+      "description": "Select your EcoFlow API region",
+      "type": "dropdown",
+      "required": true,
+      "default": "eu",
+      "data": [
+        { "title": "Europe", "value": "eu" },
+        { "title": "Americas", "value": "us" }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "list-devices",
+      "title": "List Devices",
+      "subtitle": "EcoFlow",
+      "description": "View all your EcoFlow devices with battery level, power status, and quick controls",
+      "mode": "view"
+    },
+    {
+      "name": "device-detail",
+      "title": "Device Detail",
+      "subtitle": "EcoFlow",
+      "description": "View detailed status and properties of a specific EcoFlow device",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "serialNumber",
+          "type": "text",
+          "placeholder": "Serial Number (optional)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "control-device",
+      "title": "Control Device",
+      "subtitle": "EcoFlow",
+      "description": "Send commands to your EcoFlow devices — toggle AC/DC output, set charge limits, and more",
+      "mode": "view"
+    }
+  ],
+  "tools": [
+    {
+      "name": "list-all-devices",
+      "title": "List All Devices",
+      "description": "List all EcoFlow devices with their current status including battery level, online state, and power usage"
+    },
+    {
+      "name": "get-device-status",
+      "title": "Get Device Status",
+      "description": "Get detailed status of a specific EcoFlow device including battery level, power input/output, charging state, and time estimates"
+    },
+    {
+      "name": "control-ecoflow-device",
+      "title": "Control Device",
+      "description": "Control an EcoFlow device — toggle AC/DC output, set charge or discharge limits"
+    }
+  ],
+  "ai": {
+    "instructions": "You are helping the user monitor and control their EcoFlow portable power stations and solar ecosystem. Always list devices first if the user hasn't specified which device they mean. Match device names flexibly (case-insensitive, partial match). When reporting battery levels, include charging context (input/output watts). Always ask for confirmation before sending control commands to physical devices.",
+    "evals": [
+      {
+        "input": "@ecoflow What are my devices?",
+        "mocks": {
+          "list-all-devices": [
+            {
+              "name": "Living Room Delta Pro",
+              "serialNumber": "DCABZ12345",
+              "type": "DELTA_PRO",
+              "online": true,
+              "batteryLevel": 78,
+              "inputWatts": 450,
+              "outputWatts": 120
+            }
+          ]
+        },
+        "expected": [
+          { "callsTool": { "name": "list-all-devices" } },
+          { "meetsCriteria": "Lists the user's EcoFlow devices with status" }
+        ]
+      },
+      {
+        "input": "@ecoflow What's the battery level of my Delta Pro?",
+        "mocks": {
+          "list-all-devices": [
+            {
+              "name": "Living Room Delta Pro",
+              "serialNumber": "DCABZ12345",
+              "type": "DELTA_PRO",
+              "online": true,
+              "batteryLevel": 78,
+              "inputWatts": 450,
+              "outputWatts": 120
+            }
+          ],
+          "get-device-status": {
+            "name": "Living Room Delta Pro",
+            "serialNumber": "DCABZ12345",
+            "batteryLevel": 78,
+            "inputWatts": 450,
+            "outputWatts": 120,
+            "chargingState": "Charging",
+            "remainingChargeTime": 45
+          }
+        },
+        "expected": [
+          { "callsTool": { "name": "get-device-status" } },
+          { "meetsCriteria": "Reports battery level with charging context" }
+        ]
+      },
+      {
+        "input": "@ecoflow Turn on the AC output on my Delta Pro",
+        "mocks": {
+          "list-all-devices": [
+            {
+              "name": "Living Room Delta Pro",
+              "serialNumber": "DCABZ12345",
+              "type": "DELTA_PRO",
+              "online": true,
+              "batteryLevel": 78
+            }
+          ],
+          "control-ecoflow-device": "AC output has been turned on for Living Room Delta Pro"
+        },
+        "expected": [
+          {
+            "callsTool": {
+              "name": "control-ecoflow-device",
+              "arguments": {
+                "command": { "includes": "ac" }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "@raycast/api": "^1.104.5",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.8",
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.2",
+    "typescript": "^5.5.3"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix"
+  }
+}
