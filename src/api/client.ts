@@ -1,6 +1,6 @@
 import { getPreferenceValues } from "@raycast/api";
 import { API_HOSTS, API_PATHS } from "../utils/constants";
-import { generateNonce, generateSignature } from "../utils/signing";
+import { flattenParams, generateNonce, generateSignature } from "../utils/signing";
 import type { ExtensionPreferences } from "../types/preferences";
 import type { ApiDevice, ApiDeviceQuota, ApiResponse } from "./types";
 
@@ -20,6 +20,7 @@ class EcoFlowClient {
     method: "GET" | "PUT",
     path: string,
     params: Record<string, string> = {},
+    rawBody?: Record<string, unknown>,
   ): Promise<T> {
     const nonce = generateNonce();
     const timestamp = String(Date.now());
@@ -55,7 +56,7 @@ class EcoFlowClient {
         .join("&");
       url += `?${queryString}`;
     } else if (method === "PUT") {
-      fetchOptions.body = JSON.stringify(params);
+      fetchOptions.body = JSON.stringify(rawBody ?? params);
     }
 
     const response = await fetch(url, fetchOptions);
@@ -102,12 +103,8 @@ class EcoFlowClient {
     command: Record<string, unknown>,
   ): Promise<void> {
     const body = { sn, ...command };
-    const flatParams: Record<string, string> = {};
-    for (const [key, value] of Object.entries(body)) {
-      flatParams[key] =
-        typeof value === "object" ? JSON.stringify(value) : String(value);
-    }
-    await this.request<void>("PUT", API_PATHS.deviceSetCommand, flatParams);
+    const flat = flattenParams(body);
+    await this.request<void>("PUT", API_PATHS.deviceSetCommand, flat, body);
   }
 }
 
