@@ -1,6 +1,10 @@
 import { getPreferenceValues } from "@raycast/api";
 import { API_HOSTS, API_PATHS } from "../utils/constants";
-import { flattenParams, generateNonce, generateSignature } from "../utils/signing";
+import {
+  flattenParams,
+  generateNonce,
+  generateSignature,
+} from "../utils/signing";
 import type { ExtensionPreferences } from "../types/preferences";
 import type { ApiDevice, ApiDeviceQuota, ApiResponse } from "./types";
 

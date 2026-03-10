@@ -10,7 +10,7 @@ import {
 type Input = {
   /** The name or serial number of the EcoFlow device to control. Can be a partial name match (case-insensitive). */
   deviceIdentifier: string;
-  /** The command to execute. Available commands: ac_on, ac_off, dc_on, dc_off, set_charge_limit, set_discharge_limit, plug_on, plug_off */
+  /** The command to execute. Power stations: ac_on, ac_off, dc_on, dc_off, set_charge_limit, set_discharge_limit, set_ac_charging_power, buzzer_off, buzzer_on. Smart Plug: plug_on, plug_off, set_brightness. PowerStream: set_supply_priority, set_custom_load_power, set_bat_upper_limit, set_bat_lower_limit. Wave 2: set_main_mode, set_temperature, buzzer_on_wave, buzzer_off_wave. Glacier: set_glacier_temp, eco_mode_on, eco_mode_off, ice_making_on, ice_making_off, buzzer_on_glacier, buzzer_off_glacier */
   command: string;
   /** Optional numeric value for commands that require it (e.g., charge limit percentage) */
   value?: string;

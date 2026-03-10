@@ -1,7 +1,10 @@
 import { useCachedPromise } from "@raycast/utils";
 import { getClient } from "../api/client";
-import { detectDeviceType } from "../utils/device-metadata";
-import type { Device } from "../types/device";
+import {
+  detectDeviceType,
+  extractDeviceProperties,
+} from "../utils/device-metadata";
+import { DeviceType, type Device } from "../types/device";
 
 export function useDevices() {
   return useCachedPromise(
@@ -12,31 +15,40 @@ export function useDevices() {
       const devices: Device[] = await Promise.all(
         apiDevices.map(async (apiDevice) => {
           const type = detectDeviceType(apiDevice.sn);
-          let batteryLevel: number | undefined;
-          let inputWatts: number | undefined;
-          let outputWatts: number | undefined;
-
-          try {
-            const props = await client.getDeviceProperties(apiDevice.sn);
-            const pd = props["pd"] ?? props["20_1"] ?? {};
-            const bms = props["bms_bmsStatus"] ?? props["2_1"] ?? {};
-            batteryLevel = asNumber(pd["soc"] ?? bms["soc"]);
-            inputWatts = asNumber(pd["wattsInSum"]);
-            outputWatts = asNumber(pd["wattsOutSum"]);
-          } catch {
-            // Device properties may not be available for all devices
-          }
-
-          return {
+          const device: Device = {
             serialNumber: apiDevice.sn,
             name: apiDevice.deviceName || apiDevice.productName || apiDevice.sn,
             productName: apiDevice.productName,
             type,
             online: apiDevice.online === 1,
-            batteryLevel,
-            inputWatts,
-            outputWatts,
           };
+
+          try {
+            const rawData = await client.getDeviceProperties(apiDevice.sn);
+            const props = extractDeviceProperties(type, rawData);
+
+            if (type === DeviceType.SMART_PLUG) {
+              device.plugSwitchState = props.plugSwitchState as
+                | boolean
+                | undefined;
+              device.plugWatts = props.plugWatts as number | undefined;
+            } else if (type === DeviceType.POWERSTREAM) {
+              device.batteryLevel = props.batteryLevel as number | undefined;
+              device.inputWatts = props.solarInputWatts as number | undefined;
+              device.inverterOutputWatts = props.inverterOutputWatts as
+                | number
+                | undefined;
+              device.outputWatts = props.totalOutputWatts as number | undefined;
+            } else {
+              device.batteryLevel = props.batteryLevel as number | undefined;
+              device.inputWatts = props.totalInputWatts as number | undefined;
+              device.outputWatts = props.totalOutputWatts as number | undefined;
+            }
+          } catch {
+            // Device properties may not be available for all devices
+          }
+
+          return device;
         }),
       );
 
@@ -47,10 +59,4 @@ export function useDevices() {
       keepPreviousData: true,
     },
   );
-}
-
-function asNumber(val: unknown): number | undefined {
-  if (val === undefined || val === null) return undefined;
-  const n = Number(val);
-  return isNaN(n) ? undefined : n;
 }

@@ -20,6 +20,23 @@ export enum DeviceType {
   UNKNOWN = "UNKNOWN",
 }
 
+export const POWER_STATION_TYPES = [
+  DeviceType.DELTA_PRO,
+  DeviceType.DELTA_PRO_ULTRA,
+  DeviceType.DELTA_2,
+  DeviceType.DELTA_2_MAX,
+  DeviceType.DELTA_MAX,
+  DeviceType.DELTA_MINI,
+  DeviceType.RIVER_2,
+  DeviceType.RIVER_2_MAX,
+  DeviceType.RIVER_2_PRO,
+  DeviceType.RIVER_PRO,
+] as const;
+
+export function isPowerStation(type: DeviceType): boolean {
+  return (POWER_STATION_TYPES as readonly DeviceType[]).includes(type);
+}
+
 export interface Device {
   serialNumber: string;
   name: string;
@@ -29,6 +46,11 @@ export interface Device {
   batteryLevel?: number;
   inputWatts?: number;
   outputWatts?: number;
+  // Smart Plug specific
+  plugSwitchState?: boolean;
+  plugWatts?: number;
+  // PowerStream specific
+  inverterOutputWatts?: number;
 }
 
 export interface DeviceProperties {
@@ -67,6 +89,31 @@ export interface DeviceProperties {
 
   // Temperature
   temperature?: number;
+
+  // Smart Plug specific
+  plugSwitchState?: boolean;
+  plugWatts?: number;
+  plugVoltage?: number;
+  plugCurrent?: number;
+  plugBrightness?: number;
+
+  // PowerStream specific
+  customLoadPower?: number;
+  supplyPriority?: number;
+  pv1InputWatts?: number;
+  pv2InputWatts?: number;
+  inverterOutputWatts?: number;
+
+  // Glacier specific
+  leftTemp?: number;
+  rightTemp?: number;
+  iceMaking?: boolean;
+  ecoMode?: boolean;
+
+  // Wave 2 specific
+  mainMode?: number;
+  setTemperature?: number;
+  fanSpeed?: number;
 
   // Raw data for device-specific info
   rawData?: Record<string, unknown>;

@@ -1,4 +1,10 @@
-import { Action, ActionPanel, Icon, List } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Icon,
+  List,
+  openExtensionPreferences,
+} from "@raycast/api";
 
 export function EmptyView({ isLoading }: { isLoading: boolean }) {
   if (isLoading) return null;
@@ -10,11 +16,15 @@ export function EmptyView({ isLoading }: { isLoading: boolean }) {
       description="Make sure your Access Key and Secret Key are set correctly in the extension preferences. You can get your API credentials from developer.ecoflow.com."
       actions={
         <ActionPanel>
+          <Action
+            title="Open Extension Preferences"
+            icon={Icon.Gear}
+            onAction={openExtensionPreferences}
+          />
           <Action.OpenInBrowser
             title="Get Api Credentials"
             url="https://developer.ecoflow.com"
           />
-          <Action title="Open Extension Preferences" onAction={() => {}} />
         </ActionPanel>
       }
     />
