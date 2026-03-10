@@ -37,6 +37,19 @@ export function isPowerStation(type: DeviceType): boolean {
   return (POWER_STATION_TYPES as readonly DeviceType[]).includes(type);
 }
 
+// Delta Pro, Delta Max, Delta Mini, River Pro use "TCP" operateType with cmdSet/id
+const TCP_COMMAND_TYPES = [
+  DeviceType.DELTA_PRO,
+  DeviceType.DELTA_PRO_ULTRA,
+  DeviceType.DELTA_MAX,
+  DeviceType.DELTA_MINI,
+  DeviceType.RIVER_PRO,
+] as const;
+
+export function usesTcpCommands(type: DeviceType): boolean {
+  return (TCP_COMMAND_TYPES as readonly DeviceType[]).includes(type);
+}
+
 export interface Device {
   serialNumber: string;
   name: string;

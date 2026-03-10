@@ -1,5 +1,5 @@
 import { Icon } from "@raycast/api";
-import { DeviceType, isPowerStation } from "../types/device";
+import { DeviceType, isPowerStation, usesTcpCommands } from "../types/device";
 
 // Serial number prefix to device type mapping
 const SN_PREFIX_MAP: Record<string, DeviceType> = {
@@ -352,40 +352,93 @@ export function getSupportedCommands(type: DeviceType): DeviceCommand[] {
 }
 
 // Map command IDs to API command payloads
-// Power stations use: { operateType, moduleType, params }
+// Delta Pro/Max/Mini/River Pro use: { operateType: "TCP", params: { cmdSet, id, ... } }
+// Delta 2/River 2 family use: { operateType, moduleType, params }
 // Smart Plug / PowerStream use: { cmdCode, params }
-// Wave 2 uses: { operateType, params }
+// Wave 2 uses: { operateType, moduleType, params }
 // Glacier uses: { operateType, moduleType, params }
 export function getCommandPayload(
   type: DeviceType,
   commandId: string,
   value?: number,
 ): Record<string, unknown> {
-  if (isPowerStation(type)) {
+  // Delta Pro, Delta Max, Delta Mini, River Pro — TCP command style
+  if (isPowerStation(type) && usesTcpCommands(type)) {
     switch (commandId) {
       case "ac_on":
         return {
-          operateType: "acAutoOutConfig",
-          moduleType: 1,
-          params: { acAutoOutConfig: 1, minAcOutSoc: 0 },
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 66, enabled: 1 },
         };
       case "ac_off":
         return {
-          operateType: "acAutoOutConfig",
-          moduleType: 1,
-          params: { acAutoOutConfig: 0, minAcOutSoc: 0 },
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 66, enabled: 0 },
+        };
+      case "dc_on":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 81, enabled: 1 },
+        };
+      case "dc_off":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 81, enabled: 0 },
+        };
+      case "set_charge_limit":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 49, maxChgSoc: value ?? 100 },
+        };
+      case "set_discharge_limit":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 51, minDsgSoc: value ?? 0 },
+        };
+      case "set_ac_charging_power":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 69, slowChgPower: value ?? 200 },
+        };
+      case "buzzer_off":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 38, enabled: 0 },
+        };
+      case "buzzer_on":
+        return {
+          operateType: "TCP",
+          params: { cmdSet: 32, id: 38, enabled: 1 },
+        };
+    }
+  }
+
+  // Delta 2, Delta 2 Max, River 2 family — moduleType/operateType style
+  if (isPowerStation(type) && !usesTcpCommands(type)) {
+    switch (commandId) {
+      case "ac_on":
+        return {
+          operateType: "acOutCfg",
+          moduleType: 5,
+          params: { enabled: 1, out_voltage: -1, out_freq: 255, xboost: 255 },
+        };
+      case "ac_off":
+        return {
+          operateType: "acOutCfg",
+          moduleType: 5,
+          params: { enabled: 0, out_voltage: -1, out_freq: 255, xboost: 255 },
         };
       case "dc_on":
         return {
           operateType: "mpptCar",
           moduleType: 5,
-          params: { carState: 1 },
+          params: { enabled: 1 },
         };
       case "dc_off":
         return {
           operateType: "mpptCar",
           moduleType: 5,
-          params: { carState: 0 },
+          params: { enabled: 0 },
         };
       case "set_charge_limit":
         return {
@@ -403,17 +456,17 @@ export function getCommandPayload(
         return {
           operateType: "acChgCfg",
           moduleType: 5,
-          params: { chgWatts: value ?? 200, chgPauseFlag: 0 },
+          params: { chgWatts: value ?? 200, chgPauseFlag: 255 },
         };
       case "buzzer_off":
         return {
-          operateType: "quietCfg",
+          operateType: "quietMode",
           moduleType: 5,
           params: { enabled: 1 },
         };
       case "buzzer_on":
         return {
-          operateType: "quietCfg",
+          operateType: "quietMode",
           moduleType: 5,
           params: { enabled: 0 },
         };
@@ -470,21 +523,25 @@ export function getCommandPayload(
       case "set_main_mode":
         return {
           operateType: "mainMode",
+          moduleType: 1,
           params: { mainMode: value ?? 0 },
         };
       case "set_temperature":
         return {
           operateType: "temp",
+          moduleType: 1,
           params: { setTemp: value ?? 24 },
         };
       case "buzzer_on_wave":
         return {
           operateType: "beepEn",
+          moduleType: 1,
           params: { enabled: 1 },
         };
       case "buzzer_off_wave":
         return {
           operateType: "beepEn",
+          moduleType: 1,
           params: { enabled: 0 },
         };
     }
@@ -564,8 +621,9 @@ function extractPowerStationProperties(
   rawData: Record<string, Record<string, unknown>>,
 ): Record<string, unknown> {
   const pd = rawData["pd"] ?? rawData["20_1"] ?? {};
-  const bms = rawData["bms_bmsStatus"] ?? rawData["2_1"] ?? {};
-  const ems = rawData["bms_emsStatus"] ?? {};
+  const bms =
+    rawData["bms_bmsStatus"] ?? rawData["bmsMaster"] ?? rawData["2_1"] ?? {};
+  const ems = rawData["bms_emsStatus"] ?? rawData["ems"] ?? {};
   const inv = rawData["inv"] ?? rawData["3_1"] ?? {};
   const mppt = rawData["mppt"] ?? rawData["5_1"] ?? {};
 
@@ -653,7 +711,7 @@ function extractGlacierProperties(
     leftTemp: asNumber(pd["tmpL"]),
     rightTemp: asNumber(pd["tmpR"]),
     iceMaking: asBool(pd["iceMkMode"]),
-    ecoMode: asBool(pd["ecoMode"]),
+    ecoMode: asBool(pd["coolMode"] ?? pd["ecoMode"]),
   };
 }
 
