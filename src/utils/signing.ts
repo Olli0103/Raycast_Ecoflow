@@ -7,17 +7,15 @@ export function generateSignature(
   nonce: string,
   timestamp: string,
 ): string {
-  // Combine request params with auth params, then sort all together by key
-  const allParams: Record<string, string> = {
-    ...params,
-    accessKey,
-    nonce,
-    timestamp,
-  };
-  const queryString = Object.keys(allParams)
+  // Sort request params separately, then append auth params after
+  const sortedParams = Object.keys(params)
     .sort()
-    .map((key) => `${key}=${allParams[key]}`)
+    .map((key) => `${key}=${params[key]}`)
     .join("&");
+  const authStr = `accessKey=${accessKey}&nonce=${nonce}&timestamp=${timestamp}`;
+  const queryString = sortedParams
+    ? `${sortedParams}&${authStr}`
+    : authStr;
 
   return crypto
     .createHmac("sha256", secretKey)
